@@ -1,5 +1,5 @@
 /* Copyright 2019 Georg Voigtlaender gvoigtlaender@googlemail.com */
-#include <main.h>
+// #include <main.h>
 #include <iostream>
 #include <string>
 #include "CPcbNew_Parser.h"
