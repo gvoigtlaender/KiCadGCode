@@ -4,19 +4,26 @@
 #include <string>
 #include "CPcbNew_Parser.h"
 
+void usage() {
+  printf("Aborting: no input file provided\n");
+  printf("Usage:\n");
+  printf("\t./KiCadGCode <filename>\n");
+}
 
 int main(int argc, char** argv) {
+    if ( argc != 2 ) {
+      usage();
+      exit(-1);
+    }
+
     CPcbNew_Parser* pParser = new CPcbNew_Parser(argc, argv);
 
-    if (pParser->m_sFileName != "" )
-      pParser->Parse();
-    else
-      pParser->Parse("2.kicad_pcb");
+    pParser->Parse();
     pParser->Normalize();
     pParser->Sort();
-    pParser->GenerateGCode("2_f.ngc");
+    pParser->GenerateGCode(pParser->m_sFileName + "_f.ngc");
     pParser->Invert();
     pParser->Sort();
-    pParser->GenerateGCode("2_b.ngc");
+    pParser->GenerateGCode(pParser->m_sFileName + "_b.ngc");
     return 0;
 }

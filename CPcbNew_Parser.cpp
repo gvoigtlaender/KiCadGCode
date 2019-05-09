@@ -1,5 +1,5 @@
 /* Copyright 2019 Georg Voigtlaender gvoigtlaender@googlemail.com */
-#include "CPcbNew_Parser.h"
+#include "./CPcbNew_Parser.h"
 
 #include <fstream>
 #include <iostream>
@@ -19,42 +19,17 @@ using std::vector;
 
 /*static*/ list<CElement*> CPcbNew_Parser::m_Elements;
 
-vector<string> split(const string& str, const string& delim) {
-    vector<string> tokens;
-    size_t prev = 0, pos = 0;
-    do {
-        pos = str.find(delim, prev);
-        if (pos == string::npos) pos = str.length();
-        string token = str.substr(prev, pos-prev);
-        if (!token.empty()) tokens.push_back(token);
-        prev = pos + delim.length();
-    } while (pos < str.length() && prev < str.length());
-    return tokens;
-}
-
 CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
 : m_sFileName("")
 , m_pRootPartical(nullptr) {
-  for (int i = 1; i < argc; ++i) {
-      vector<string> vArg = split(argv[i], "=");
-
+      /*
       std::cout << "You have entered " << argc
            << " arguments:" << "\n";
 
       for (int i = 0; i < argc; ++i)
           std::cout << argv[i] << "\n";
-
-
-      string sParam = vArg[0];
-
-      if ( sParam == "" ) {
-      } else if ( sParam == "pcb" ) {
-        if ( vArg.size() == 2 ) {
-          m_sFileName = vArg[1];
-          printf("pcb: %s\n", m_sFileName.c_str());
-        }
-      }
-    }
+      */
+      m_sFileName = argv[1];
     // ctor
 }
 
@@ -77,8 +52,8 @@ CPcbNew_Parser::~CPcbNew_Parser() {
 
 
 
-bool CPcbNew_Parser::Parse(string sFileName) {
-    m_sFileName = sFileName;
+bool CPcbNew_Parser::Parse() {
+    string sFileName = m_sFileName;
 
     std::ifstream inFile;
     inFile.open(sFileName);  // open the input file

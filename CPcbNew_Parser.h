@@ -17,8 +17,7 @@ class CPcbNew_Parser {
     CPcbNew_Parser(int argc, char** argv);
     virtual ~CPcbNew_Parser();
 
-    bool Parse()  { return Parse(m_sFileName);  }
-    bool Parse(std::string sFileName);
+    bool Parse();
     bool Normalize();
     bool Sort();
     bool Invert();
