@@ -1,5 +1,5 @@
 /* Copyright 2019 Georg Voigtlaender gvoigtlaender@googlemail.com */
-#include "CPartical.h"
+#include <CPartical.h>
 #include <CElement.h>
 #include <CPcbNew_Parser.h>
 
@@ -13,6 +13,8 @@ using std::string;
 #include <algorithm>
 #include <cstdio>
 #include <list>
+
+/*static*/ uint32_t CPartical::ms_ulNoOfObjects = 0;
 
 inline std::string trim(const std::string &s) {
   auto wsfront = std::find_if_not(s.begin(), s.end(), [](int c){return std::isspace(c);});
@@ -35,6 +37,10 @@ void CPartical::print(uint8_t nIdx /* =  0 */) {
         m_Childs[n]->print(nIdx+1);
 }
 
+bool LayerContains(const string& sLayer) {
+  return (std::find(CPcbNew_Parser::ms_Layers.begin(), CPcbNew_Parser::ms_Layers.end(), sLayer) != CPcbNew_Parser::ms_Layers.end());
+}
+
 void CPartical::evaluate() {
     m_sName = trim(m_sName);
     if ( m_sName == "gr_line" )
@@ -42,8 +48,9 @@ void CPartical::evaluate() {
     else if ( m_sName == "gr_circle" )
         m_pElement = new CElementCircle("circle", this);
 
-    if ( m_pElement != nullptr && m_pElement->m_sLayer != "Edge.Cuts" ) {
-      printf("delete %s -> layer %s\n", m_pElement->m_sName.c_str(), m_pElement->m_sLayer.c_str());
+    // if ( m_pElement != nullptr && m_pElement->m_sLayer != "Edge.Cuts" ) {
+    if ( m_pElement != nullptr && !LayerContains(m_pElement->m_sLayer) ) {
+      if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf("delete %s -> layer %s\n", m_pElement->m_sName.c_str(), m_pElement->m_sLayer.c_str());
       delete m_pElement;
       m_pElement = nullptr;
     }

@@ -1,10 +1,11 @@
 /* Copyright 2019 Georg Voigtlaender gvoigtlaender@googlemail.com */
-#include "./CPcbNew_Parser.h"
+#include <CPcbNew_Parser.h>
 
 #include <fstream>
 #include <iostream>
 #include <sstream>
-
+#include <thread>
+#include <chrono>
 
 #include <cctype>
 #include <string>
@@ -15,22 +16,98 @@
 #include <CElement.h>
 #include <CPartical.h>
 
+// #include "getopt/getopt.h"
+#include "tclap/CmdLine.h"
 using std::vector;
 
 /*static*/ list<CElement*> CPcbNew_Parser::m_Elements;
+/*static*/ int  CPcbNew_Parser::ms_nVerbose = 0;
+/*static*/ std::vector<string> CPcbNew_Parser::ms_Layers;
 
 CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
 : m_sFileName("")
-, m_pRootPartical(nullptr) {
-      /*
-      std::cout << "You have entered " << argc
-           << " arguments:" << "\n";
+, m_pRootPartical(nullptr)
+, m_bCreateFront(true)
+, m_bCreateBack(true) {
+    /*
+      struct option long_options[] = {
+        {"verbose", no_argument,       0, 'v'},
+        {"add",     no_argument,       0, 'a'},
+        {"append",  no_argument,       0, 'b'},
+        {"delete",  required_argument, 0, 'd'},
+        {"create",  required_argument, 0, 'c'},
+        {"file",    required_argument, 0, 'f'},
+        {0, 0, 0, 0}
+      };
 
-      for (int i = 0; i < argc; ++i)
-          std::cout << argv[i] << "\n";
-      */
-      m_sFileName = argv[1];
-    // ctor
+      string short_options = "";
+      for ( unsigned int n=0; n < sizeof(long_options)/sizeof(option); n++ ) {
+        short_options += long_options[n].val;
+        if ( long_options[n].has_arg > 0 )
+          short_options += ":";
+      }
+
+      int c;
+      while ((c=getopt_long(argc, argv, const char *__shortopts, const struct option *__longopts, int *__longind)))
+  */
+
+  try {
+    TCLAP::CmdLine cmd("Command description message", ' ', "0.9");
+    TCLAP::UnlabeledValueArg<string> filename("filename", "filename2", "filename3", "string", "");
+    cmd.add(filename);
+
+    TCLAP::MultiSwitchArg verbose("v", "verbose", "Be verbosive", false);
+    cmd.add(verbose);
+
+    TCLAP::ValueArg<double> zsafe("s", "z_safe", "Z-Safety position to use for non-processing x/y-moves", false, CElement::ms_dZSafe, "double");
+    cmd.add(zsafe);
+    TCLAP::ValueArg<double> zprocess("p", "z_process", "z-Process position to use for processing x/y-moves", false, CElement::ms_dZProcess, "double");
+    cmd.add(zprocess);
+
+    TCLAP::MultiArg<string> layers("l", "layer", "Layer to include in gcode", false, "");
+    cmd.add(layers);
+
+    vector<string> allowed_side;
+    allowed_side.push_back("front");
+    allowed_side.push_back("back");
+    allowed_side.push_back("both");
+    TCLAP::ValuesConstraint<string> allowedSides(allowed_side);
+    TCLAP::ValueArg<string> side("e", "export_sides", "PCB side gcode to export", false, "both", &allowedSides);
+    cmd.add(side);
+
+
+    cmd.parse(argc, argv);
+
+    m_sFileName = filename.getValue();
+    CPcbNew_Parser::ms_nVerbose = verbose.getValue();
+
+    CElement::ms_dZSafe = zsafe.getValue();
+    CElement::ms_dZProcess = zprocess.getValue();
+
+    vector<string> vlayers = layers.getValue();
+    if ( vlayers.size() > 0 ) {
+      CPcbNew_Parser::ms_Layers = vlayers;
+    } else {
+      CPcbNew_Parser::ms_Layers.push_back("Edge.Cuts");
+    }
+
+    string sSide = side.getValue();
+    if ( sSide == "front" ) m_bCreateBack = false;
+    if ( sSide == "back" )  m_bCreateFront =  false;
+
+  } catch (TCLAP::ArgException &e) {
+    // catch any exceptions
+    std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
+    exit(-1);
+  }
+
+  if ( CPcbNew_Parser::ms_nVerbose > 0 ) {
+    printf("using arguments: f=%s, v=%d, s=%.3f, p=%.3f, Layers:{", m_sFileName.c_str(), CPcbNew_Parser::ms_nVerbose, CElement::ms_dZSafe, CElement::ms_dZProcess);
+    for ( unsigned int n=0; n < CPcbNew_Parser::ms_Layers.size(); n++ )
+      printf("[%s]", CPcbNew_Parser::ms_Layers[n].c_str());
+    printf("}");
+    printf(", f=%s, b=%s\n", std::to_string(m_bCreateFront).c_str(), std::to_string(m_bCreateBack).c_str());
+  }
 }
 
 CPcbNew_Parser::~CPcbNew_Parser() {
@@ -49,11 +126,10 @@ CPcbNew_Parser::~CPcbNew_Parser() {
 #define _sPART_   "########################### PARTICALS ##########################\n"
 #define _sELEM_   "########################### ELEMENTS ###########################\n"
 
-
-
-
 bool CPcbNew_Parser::Parse() {
     string sFileName = m_sFileName;
+
+    printf("Parsing %s\n", m_sFileName.c_str());
 
     std::ifstream inFile;
     inFile.open(sFileName);  // open the input file
@@ -66,13 +142,15 @@ bool CPcbNew_Parser::Parse() {
     strStream << inFile.rdbuf();  // read the file
     std::string content = strStream.str();  // str holds the content of the file
 
-    /*
-    printf("%s", _sFILE_);
-    printf("%s\n", content.c_str());
-    printf("%s\n\n", _sFILE_);
-    */
+    if ( CPcbNew_Parser::ms_nVerbose > 1 ) {
+      printf("%s", _sFILE_);
+      printf("%s\n", content.c_str());
+      printf("%s\n\n", _sFILE_);
+    }
 
     CPartical* pCurrent = nullptr;
+
+    if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf("evaluating kicad elements .");
 
     for ( uint64_t pos = 0; pos < content.length(); pos++ ) {
         char c = content[pos];
@@ -82,10 +160,14 @@ bool CPcbNew_Parser::Parse() {
             if ( !m_pRootPartical )
                 m_pRootPartical = p;
             pCurrent = p;
+            if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf(".");
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
         } else if (c == ')') {
             //! leave partialcal
             if ( pCurrent )
                 pCurrent = pCurrent->m_pParent;
+            if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf(".");
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
         } else if ( c == '\n' ) {
         } else if ( c == '\r' ) {
         } else if ( c == '\t' ) {
@@ -95,27 +177,37 @@ bool CPcbNew_Parser::Parse() {
         }
     }
 
-    // printf("%s", _sPART_);
+    if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf(" done \n\n");
+
+    printf("Found %d kicad elements\n", CPartical::ms_ulNoOfObjects);
+
+    if ( CPcbNew_Parser::ms_nVerbose > 1 ) printf("%s", _sPART_);
     if ( m_pRootPartical ) {
         m_pRootPartical->evaluate();
-        // m_pRootPartical->print(0);
+        if ( CPcbNew_Parser::ms_nVerbose > 1 ) m_pRootPartical->print(0);
     }
-    // printf("%s\n\n", _sPART_);
+    if ( CPcbNew_Parser::ms_nVerbose > 1 ) printf("%s\n\n", _sPART_);
 
-    /*
-    printf("%s", _sELEM_);
-    for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
+    if ( m_Elements.size() == 0 ) {
+      printf("0 Elements after parsing - exit\n");
+      exit(-2);
+    }
+    printf("Found %lu gcode elements\n", m_Elements.size());
+
+    if ( CPcbNew_Parser::ms_nVerbose > 1 ) {
+      printf("%s", _sELEM_);
+      for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
         CElement* pElement = *it;
         printf("%s\n", pElement->print().c_str());
+      }
+      printf("%s\n\n", _sELEM_);
     }
-    printf("%s\n\n", _sELEM_);
-    */
 
     return true;
 }
 
 bool CPcbNew_Parser::Normalize() {
-    printf("Normalize()\n");
+    printf("Normalize elements\n");
     CPoint min;
     CPoint max;
     (*m_Elements.begin())->GetEndPoint(&min);
@@ -125,31 +217,31 @@ bool CPcbNew_Parser::Normalize() {
         pElement->minmax(&min, &max);
     }
 
-    printf("\nMin: %s, Max:%s\n", min.print().c_str(), max.print().c_str());
+    if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf("\nBefore: Min: %s, Max:%s\n", min.print().c_str(), max.print().c_str());
     for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
         CElement* pElement = *it;
         pElement->normalize(min);
     }
 
-    /*
-    printf("%s", _sELEM_);
-    for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
+    if ( CPcbNew_Parser::ms_nVerbose > 1 ) {
+      printf("%s", _sELEM_);
+      for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
         CElement* pElement = *it;
         printf("%s\n", pElement->print().c_str());
+      }
+      printf("%s\n\n", _sELEM_);
     }
-    printf("%s\n\n", _sELEM_);
-    */
 
     m_Min = CPoint();
     m_Max = max;
     m_Max.normalize(min);
-    printf("min: %s, max: %s\n", m_Min.print().c_str(), m_Max.print().c_str());
+    if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf("After: Min: %s, Max: %s\n", m_Min.print().c_str(), m_Max.print().c_str());
 
     return  true;
 }
 
 bool CPcbNew_Parser::Sort() {
-    printf("Sorting\n");
+    printf("Sorting elements\n");
     list<CElement*> _in = m_Elements;
     list<CElement*> _out;
 
@@ -175,19 +267,20 @@ bool CPcbNew_Parser::Sort() {
     // printf("Ending at %s\n", _current.print().c_str());
     m_Elements = _out;
 
-    /*
-    printf("%s", _sELEM_);
-    for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
+    if ( CPcbNew_Parser::ms_nVerbose > 1 ) {
+      printf("%s", _sELEM_);
+      for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
         CElement* pElement = *it;
         printf("%s\n", pElement->print().c_str());
+      }
+      printf("%s\n\n", _sELEM_);
     }
-    printf("%s\n\n", _sELEM_);
-    */
 
     return true;
 }
 
 bool CPcbNew_Parser::Invert() {
+  printf("Invert elements\n");
   for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
       CElement* pElement = *it;
       pElement->invert(m_Max, CElement::x);
@@ -195,6 +288,7 @@ bool CPcbNew_Parser::Invert() {
   return true;
 }
 bool CPcbNew_Parser::GenerateGCode(std::string sFileName) {
+    printf("Generate %s\n", sFileName.c_str());
     string sGCode;
 
     int nFeedRate = 300;
@@ -228,11 +322,11 @@ bool CPcbNew_Parser::GenerateGCode(std::string sFileName) {
     sGCode += "G0 M5\n";
     sGCode += "M2\t; end program\n";
 
-    /*
-    printf("EXPORT : %s \n", sFileName.c_str());
-    printf("%s\n", sGCode.c_str());
-    printf("EXPORT : %s \n", sFileName.c_str());
-    */
+    if ( CPcbNew_Parser::ms_nVerbose > 1 ) {
+      printf("EXPORT : %s \n", sFileName.c_str());
+      printf("%s\n", sGCode.c_str());
+      printf("EXPORT : %s \n", sFileName.c_str());
+    }
 
     std::ofstream out(sFileName);
     out << sGCode;

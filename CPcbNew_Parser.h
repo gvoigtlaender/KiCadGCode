@@ -7,6 +7,7 @@
 #include <list>
 using std::string;
 using std::list;
+using std::vector;
 
 #include <CPoint.hpp>
 
@@ -30,6 +31,10 @@ class CPcbNew_Parser {
     CPoint  m_Max;
 
     static list<CElement*> m_Elements;
+    static int  ms_nVerbose;
+    static vector<string> ms_Layers;
+    bool m_bCreateFront;
+    bool m_bCreateBack;
 };
 
 #endif  // CPCBNEW_PARSER_H_

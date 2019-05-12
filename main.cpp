@@ -11,19 +11,18 @@ void usage() {
 }
 
 int main(int argc, char** argv) {
-    if ( argc != 2 ) {
-      usage();
-      exit(-1);
-    }
-
     CPcbNew_Parser* pParser = new CPcbNew_Parser(argc, argv);
 
     pParser->Parse();
     pParser->Normalize();
     pParser->Sort();
-    pParser->GenerateGCode(pParser->m_sFileName + "_f.ngc");
-    pParser->Invert();
-    pParser->Sort();
-    pParser->GenerateGCode(pParser->m_sFileName + "_b.ngc");
+    if ( pParser->m_bCreateFront ) {
+      pParser->GenerateGCode(pParser->m_sFileName + "_f.ngc");
+    }
+    if ( pParser->m_bCreateBack ) {
+      pParser->Invert();
+      pParser->Sort();
+      pParser->GenerateGCode(pParser->m_sFileName + "_b.ngc");
+    }
     return 0;
 }

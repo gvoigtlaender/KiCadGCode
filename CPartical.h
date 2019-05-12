@@ -15,11 +15,13 @@ class CPartical {
     , m_pElement(nullptr) {
         if ( pParent )
             pParent->m_Childs.push_back(this);
+        CPartical::ms_ulNoOfObjects++;
     }
     virtual ~CPartical() {
         for ( uint8_t n=0; n < m_Childs.size(); n++ )
             delete m_Childs[n];
         m_Childs.clear();
+        CPartical::ms_ulNoOfObjects--;
     }
 
     virtual void print(uint8_t nIdx = 0);
@@ -33,6 +35,7 @@ class CPartical {
     std::vector<CPartical*> m_Childs;
 
     CElement*   m_pElement;
+    static uint32_t ms_ulNoOfObjects;
 };
 
 #endif  // CPARTICAL_H_
