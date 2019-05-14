@@ -27,6 +27,7 @@ class CPcbNew_Parser {
     std::string m_sFileName;
     CPartical* m_pRootPartical;
 
+    CPoint  m_Offset;
     CPoint  m_Min;
     CPoint  m_Max;
 

@@ -21,6 +21,7 @@ int main(int argc, char** argv) {
     }
     if ( pParser->m_bCreateBack ) {
       pParser->Invert();
+      pParser->Normalize();
       pParser->Sort();
       pParser->GenerateGCode(pParser->m_sFileName + "_b.ngc");
     }

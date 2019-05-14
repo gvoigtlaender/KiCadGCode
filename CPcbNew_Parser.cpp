@@ -29,27 +29,6 @@ CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
 , m_pRootPartical(nullptr)
 , m_bCreateFront(true)
 , m_bCreateBack(true) {
-    /*
-      struct option long_options[] = {
-        {"verbose", no_argument,       0, 'v'},
-        {"add",     no_argument,       0, 'a'},
-        {"append",  no_argument,       0, 'b'},
-        {"delete",  required_argument, 0, 'd'},
-        {"create",  required_argument, 0, 'c'},
-        {"file",    required_argument, 0, 'f'},
-        {0, 0, 0, 0}
-      };
-
-      string short_options = "";
-      for ( unsigned int n=0; n < sizeof(long_options)/sizeof(option); n++ ) {
-        short_options += long_options[n].val;
-        if ( long_options[n].has_arg > 0 )
-          short_options += ":";
-      }
-
-      int c;
-      while ((c=getopt_long(argc, argv, const char *__shortopts, const struct option *__longopts, int *__longind)))
-  */
 
   try {
     TCLAP::CmdLine cmd("Command description message", ' ', "0.9");
@@ -75,6 +54,11 @@ CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
     TCLAP::ValueArg<string> side("e", "export_sides", "PCB side gcode to export", false, "both", &allowedSides);
     cmd.add(side);
 
+    TCLAP::ValueArg<double> x0("x", "x_offset", "X-Offset (lower left corner to zero)", false, 0.0, "double");
+    cmd.add(x0);
+    TCLAP::ValueArg<double> y0("y", "y_offset", "Y-Offset (lower left corner to zero)", false, 0.0, "double");
+    cmd.add(y0);
+
 
     cmd.parse(argc, argv);
 
@@ -94,6 +78,9 @@ CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
     string sSide = side.getValue();
     if ( sSide == "front" ) m_bCreateBack = false;
     if ( sSide == "back" )  m_bCreateFront =  false;
+
+    m_Offset.m_dX = x0.getValue();
+    m_Offset.m_dY = y0.getValue();
 
   } catch (TCLAP::ArgException &e) {
     // catch any exceptions
@@ -217,6 +204,7 @@ bool CPcbNew_Parser::Normalize() {
         pElement->minmax(&min, &max);
     }
 
+    min.normalize(m_Offset);
     if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf("\nBefore: Min: %s, Max:%s\n", min.print().c_str(), max.print().c_str());
     for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
         CElement* pElement = *it;
