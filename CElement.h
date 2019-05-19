@@ -28,6 +28,9 @@ class CElement {
     }
     virtual void GetEndPoint(CPoint* start) const = 0;
     virtual std::string GetGCode(CPoint* /*start*/) const;
+    static std::string GetGCodeFeedratePlunge();
+    static std::string GetGCodeFeedrateProcess();
+    static std::string GetGCodeFeedrate();
     virtual void  minmax(CPoint* min, CPoint* max) const = 0;
     virtual void normalize(const CPoint& start) = 0;
     virtual void invert(const CPoint& inv, _E_InvMode eIM) = 0;
@@ -36,6 +39,9 @@ class CElement {
 
     static double ms_dZSafe;
     static double ms_dZProcess;
+    static int    ms_nFeedRate;
+    static int    ms_nFeedRateProcess;
+    static int    ms_nFeedRatePlunge;
 
     string m_sLayer;
 };

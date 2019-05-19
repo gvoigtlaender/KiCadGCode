@@ -6,6 +6,9 @@
 /*static*/ unsigned int CElement::ms_nId = 0;
 /*static*/ double CElement::ms_dZSafe = 1.0;
 /*static*/ double CElement::ms_dZProcess = -0.1;
+/*static*/ int    CElement::ms_nFeedRate = 300;
+/*static*/ int    CElement::ms_nFeedRateProcess = 200;
+/*static*/ int    CElement::ms_nFeedRatePlunge = 100;
 
 std::string CElement::print() const {
     return "[Element: " + m_sName + "]";
@@ -18,6 +21,24 @@ std::string CElement::GetGCode(CPoint* /*start*/) const {
     s += "(Block-enable: 1)\n";
 
     return s;
+}
+
+/*static*/ std::string CElement::GetGCodeFeedratePlunge() {
+  string s;
+  s += "F" + std::to_string(ms_nFeedRatePlunge) + ";\t set plunge feed rate \n";
+  return s;
+}
+
+/*static*/ std::string CElement::GetGCodeFeedrateProcess() {
+  string s;
+  s += "F" + std::to_string(ms_nFeedRateProcess) + ";\t set process feed rate \n";
+  return s;
+}
+
+/*static*/ std::string CElement::GetGCodeFeedrate() {
+  string s;
+  s += "F" + std::to_string(ms_nFeedRate) + ";\t set feed rate \n";
+  return s;
 }
 
 std::string CElementCircle::print() const {
@@ -51,14 +72,17 @@ std::string CElementCircle::GetGCode(CPoint* start) const {
     string s;
     s += CElement::GetGCode(start);
 
+    s += GetGCodeFeedrate();
     s += " G0";
     s += " X" + std::to_string(m_Center.m_dX);
     s += " Y" + std::to_string(m_Center.m_dY);
     s += " Z" + std::to_string(CElement::ms_dZSafe);
     s += "\t; move to start pos\n";
 
+    s += GetGCodeFeedratePlunge();
     s += " G1 Z" + std::to_string(CElement::ms_dZProcess) + "\n";
 
+    s += GetGCodeFeedrate();
     s += " G0";
     s += " Z" + std::to_string(CElement::ms_dZSafe);
     s += "\n";
@@ -81,7 +105,6 @@ void CElementCircle::invert(const CPoint& inv, _E_InvMode eIM) {
     m_Center.m_dY = inv.m_dY - m_Center.m_dY;
   }
 }
-
 
 std::string CElementLine::print() const {
     string s = "; ID=" + std::to_string(m_nId) + "[ElementLine: " + m_sName;
@@ -145,18 +168,22 @@ std::string CElementLine::GetGCode(CPoint* start) const {
         p2 = m_Start;
     }
 
+    s += GetGCodeFeedrate();
     s += " G0";
     s += " X" + std::to_string(p1.m_dX);
     s += " Y" + std::to_string(p1.m_dY);
     s += " Z" + std::to_string(CElement::ms_dZSafe);
     s += "\t; move to start pos\n";
 
+    s += GetGCodeFeedratePlunge();
     s += " G1 Z" + std::to_string(CElement::ms_dZProcess) + "\n";
+    s += GetGCodeFeedrateProcess();
     s += " G1";
     s += " X" + std::to_string(p2.m_dX);
     s += " Y" + std::to_string(p2.m_dY);
     s += "\n";
 
+    s += GetGCodeFeedrate();
     s += " G0";
     s += " Z" + std::to_string(CElement::ms_dZSafe);
     s += "\n";

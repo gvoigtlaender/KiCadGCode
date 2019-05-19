@@ -34,6 +34,7 @@ class CPcbNew_Parser {
     static list<CElement*> m_Elements;
     static int  ms_nVerbose;
     static vector<string> ms_Layers;
+    static int ms_nSpindleSpeed;
     bool m_bCreateFront;
     bool m_bCreateBack;
 };

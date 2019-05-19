@@ -23,6 +23,7 @@ using std::vector;
 /*static*/ list<CElement*> CPcbNew_Parser::m_Elements;
 /*static*/ int  CPcbNew_Parser::ms_nVerbose = 0;
 /*static*/ std::vector<string> CPcbNew_Parser::ms_Layers;
+/*static*/ int CPcbNew_Parser::ms_nSpindleSpeed = 1000;
 
 CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
 : m_sFileName("")
@@ -59,6 +60,17 @@ CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
     TCLAP::ValueArg<double> y0("y", "y_offset", "Y-Offset (lower left corner to zero)", false, 0.0, "double");
     cmd.add(y0);
 
+    TCLAP::ValueArg<int> feedrate("", "feedrate", "Feed rate for non-process moves", false, CElement::ms_nFeedRate, "int");
+    cmd.add(feedrate);
+
+    TCLAP::ValueArg<int> processfeedrate("", "processfeedrate", "Feed rate for process moves", false, CElement::ms_nFeedRateProcess, "int");
+    cmd.add(processfeedrate);
+
+    TCLAP::ValueArg<int> plungefeedrate("", "plungefeedrate", "Feed rate for plunge moves (z-down)", false, CElement::ms_nFeedRatePlunge, "int");
+    cmd.add(plungefeedrate);
+
+    TCLAP::ValueArg<int> spindlespeed("", "spindlespeed", "Spindle rotation speed [u/min]", false, ms_nSpindleSpeed, "int");
+    cmd.add(spindlespeed);
 
     cmd.parse(argc, argv);
 
@@ -81,6 +93,11 @@ CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
 
     m_Offset.m_dX = x0.getValue();
     m_Offset.m_dY = y0.getValue();
+
+    CElement::ms_nFeedRate = feedrate.getValue();
+    CElement::ms_nFeedRatePlunge = plungefeedrate.getValue();
+    CElement::ms_nFeedRateProcess = processfeedrate.getValue();
+    ms_nSpindleSpeed = spindlespeed.getValue();
 
   } catch (TCLAP::ArgException &e) {
     // catch any exceptions
@@ -279,7 +296,6 @@ bool CPcbNew_Parser::GenerateGCode(std::string sFileName) {
     printf("Generate %s\n", sFileName.c_str());
     string sGCode;
 
-    int nFeedRate = 300;
     int nSpindle = 1000;
 
     sGCode += "(Block-name: Header)\n";
@@ -292,7 +308,7 @@ bool CPcbNew_Parser::GenerateGCode(std::string sFileName) {
     sGCode += "G54\t; select coordinate system 1\n";
     sGCode += "G90\t; disable incremental moves\n";
     sGCode += "G21\t; metric\n";
-    sGCode += "F" + std::to_string(nFeedRate) + "\t; set feedrate\n";
+    sGCode += CElement::GetGCodeFeedrate();
     sGCode += "G61\t; exact path mode\n";
     sGCode += "S" + std::to_string(nSpindle) + "\t; set spindle speed\n";
     sGCode += "M3\t; start spindle\n";
