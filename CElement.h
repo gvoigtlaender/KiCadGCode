@@ -39,6 +39,7 @@ class CElement {
 
     static double ms_dZSafe;
     static double ms_dZProcess;
+    static double ms_dZProcess_n;
     static int    ms_nFeedRate;
     static int    ms_nFeedRateProcess;
     static int    ms_nFeedRatePlunge;

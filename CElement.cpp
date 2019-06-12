@@ -6,6 +6,7 @@
 /*static*/ unsigned int CElement::ms_nId = 0;
 /*static*/ double CElement::ms_dZSafe = 1.0;
 /*static*/ double CElement::ms_dZProcess = -0.1;
+/*static*/ double CElement::ms_dZProcess_n = 0;
 /*static*/ int    CElement::ms_nFeedRate = 300;
 /*static*/ int    CElement::ms_nFeedRateProcess = 200;
 /*static*/ int    CElement::ms_nFeedRatePlunge = 100;
@@ -80,7 +81,7 @@ std::string CElementCircle::GetGCode(CPoint* start) const {
     s += "\t; move to start pos\n";
 
     s += GetGCodeFeedratePlunge();
-    s += " G1 Z" + std::to_string(CElement::ms_dZProcess) + "\n";
+    s += " G1 Z" + std::to_string(CElement::ms_dZProcess_n) + "\n";
 
     s += GetGCodeFeedrate();
     s += " G0";
@@ -176,7 +177,7 @@ std::string CElementLine::GetGCode(CPoint* start) const {
     s += "\t; move to start pos\n";
 
     s += GetGCodeFeedratePlunge();
-    s += " G1 Z" + std::to_string(CElement::ms_dZProcess) + "\n";
+    s += " G1 Z" + std::to_string(CElement::ms_dZProcess_n) + "\n";
     s += GetGCodeFeedrateProcess();
     s += " G1";
     s += " X" + std::to_string(p2.m_dX);

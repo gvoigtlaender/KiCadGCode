@@ -24,6 +24,7 @@ using std::vector;
 /*static*/ int  CPcbNew_Parser::ms_nVerbose = 0;
 /*static*/ std::vector<string> CPcbNew_Parser::ms_Layers;
 /*static*/ int CPcbNew_Parser::ms_nSpindleSpeed = 1000;
+/*static*/ uint8_t CPcbNew_Parser::ms_nCutCycles = 1;
 
 CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
 : m_sFileName("")
@@ -41,8 +42,11 @@ CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
 
     TCLAP::ValueArg<double> zsafe("s", "z_safe", "Z-Safety position to use for non-processing x/y-moves", false, CElement::ms_dZSafe, "double");
     cmd.add(zsafe);
-    TCLAP::ValueArg<double> zprocess("p", "z_process", "z-Process position to use for processing x/y-moves", false, CElement::ms_dZProcess, "double");
+    TCLAP::ValueArg<double> zprocess("p", "z_process", "z-Process position to use for processing x/y-moves (cutting depth)", false, CElement::ms_dZProcess, "double");
     cmd.add(zprocess);
+
+    TCLAP::ValueArg<uint8_t> ncycles("c", "cycles", "cutting cycles", false, CPcbNew_Parser::ms_nCutCycles, "uint8");
+    cmd.add(ncycles);
 
     TCLAP::MultiArg<string> layers("l", "layer", "Layer to include in gcode", false, "");
     cmd.add(layers);
@@ -314,10 +318,14 @@ bool CPcbNew_Parser::GenerateGCode(std::string sFileName) {
     sGCode += "M3\t; start spindle\n";
     sGCode += "G04 P3.0\t; wait for 3.0 seconds\n";
 
-    CPoint  _current;
-    for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
-        CElement* pElement = *it;
-        sGCode += pElement->GetGCode(&_current);
+    for ( uint8_t n=1; n <= CPcbNew_Parser::ms_nCutCycles+1; n++ )  {
+      printf("Cycle %u\n", n);
+      CPoint  _current;
+      CElement::ms_dZProcess_n = -1.0 * fabs(CElement::ms_dZProcess * n);
+      for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
+          CElement* pElement = *it;
+          sGCode += pElement->GetGCode(&_current);
+      }
     }
 
     sGCode += "(Block-name: End)\n";
