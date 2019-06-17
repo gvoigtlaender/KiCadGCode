@@ -10,9 +10,8 @@ using std::list;
 using std::vector;
 
 #include <CPoint.hpp>
-
+#include <CElement.h>
 class CPartical;
-class CElement;
 class CPcbNew_Parser {
  public:
     CPcbNew_Parser(int argc, char** argv);
@@ -21,7 +20,7 @@ class CPcbNew_Parser {
     bool Parse();
     bool Normalize();
     bool Sort();
-    bool Invert();
+    bool Invert(CElement::_E_InvMode eInvMode);
     bool GenerateGCode(std::string sFileName);
 
     std::string m_sFileName;

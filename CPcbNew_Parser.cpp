@@ -353,12 +353,12 @@ bool CPcbNew_Parser::Sort() {
     return true;
 }
 
-bool CPcbNew_Parser::Invert() {
+bool CPcbNew_Parser::Invert(CElement::_E_InvMode eInvMode) {
   printf("Invert elements\n");
   int n = 0;
   for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
       CElement* pElement = *it;
-      pElement->invert(m_Max, CElement::x);
+      pElement->invert(m_Max, eInvMode);
       printProgress(++n, m_Elements.size());
   }
   printf("\n");

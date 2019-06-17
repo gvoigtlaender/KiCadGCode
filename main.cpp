@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
     pParser->Parse();
 
     printf("\nCreating Front side\n");
+    pParser->Invert(CElement::y);
     pParser->Normalize();
     pParser->Sort();
     if ( pParser->m_bCreateFront ) {
@@ -23,7 +24,7 @@ int main(int argc, char** argv) {
     }
     if ( pParser->m_bCreateBack ) {
       printf("\nCreating Back side\n");
-      pParser->Invert();
+      pParser->Invert(CElement::x);
       pParser->Normalize();
       pParser->Sort();
       pParser->GenerateGCode(pParser->m_sExportPrefix + pParser->m_sFileName + "_b.ngc");
