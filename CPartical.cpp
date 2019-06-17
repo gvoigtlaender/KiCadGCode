@@ -14,7 +14,19 @@ using std::string;
 #include <cstdio>
 #include <list>
 
-/*static*/ uint32_t CPartical::ms_ulNoOfObjects = 0;
+/*static*/ uint64_t CPartical::ms_ulNoOfObjects = 0;
+
+void printProgress(uint64_t n, uint64_t k);
+/*static*/ void CPartical::show_progress() {
+  printProgress(++CPartical::ms_ulProgress, CPartical::ms_ulProgressMax);
+}
+/*static*/ void CPartical::reset_progress() {
+  CPartical::ms_ulProgress = 0;
+  CPartical::ms_ulProgressMax = CPartical::ms_ulNoOfObjects;
+}
+/*static*/ uint64_t CPartical::ms_ulProgressMax = 0;
+/*static*/ uint64_t CPartical::ms_ulProgress = 0;
+
 
 inline std::string trim(const std::string &s) {
   auto wsfront = std::find_if_not(s.begin(), s.end(), [](int c){return std::isspace(c);});
@@ -54,8 +66,12 @@ void CPartical::evaluate() {
       delete m_pElement;
       m_pElement = nullptr;
     }
-    if ( m_pElement )
-        CPcbNew_Parser::m_Elements.push_back(m_pElement);
+    if ( m_pElement ) {
+      if ( m_pElement->m_sLayer != "Edge.Cuts" )
+      m_pElement->m_bToExport = false;
+      CPcbNew_Parser::m_Elements.push_back(m_pElement);
+    }
+    show_progress();
     for ( uint8_t n=0; n < m_Childs.size(); n++ )
         m_Childs[n]->evaluate();
 }

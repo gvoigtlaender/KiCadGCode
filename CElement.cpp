@@ -42,6 +42,8 @@ std::string CElement::GetGCode(CPoint* /*start*/) const {
   return s;
 }
 
+/*static*/ bool CElementCircle::ms_bToExport = false;
+
 std::string CElementCircle::print() const {
     string s = "; ID=" + std::to_string(m_nId) + "[ElementCircle: " + m_sName;
     s += "; {" + std::to_string(m_Center.m_dX) + ":" + std::to_string(m_Center.m_dY) + "}";
@@ -106,6 +108,8 @@ void CElementCircle::invert(const CPoint& inv, _E_InvMode eIM) {
     m_Center.m_dY = inv.m_dY - m_Center.m_dY;
   }
 }
+
+/*static*/ bool CElementLine::ms_bToExport = false;
 
 std::string CElementLine::print() const {
     string s = "; ID=" + std::to_string(m_nId) + "[ElementLine: " + m_sName;

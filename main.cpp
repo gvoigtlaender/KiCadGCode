@@ -14,16 +14,20 @@ int main(int argc, char** argv) {
     CPcbNew_Parser* pParser = new CPcbNew_Parser(argc, argv);
 
     pParser->Parse();
+
+    printf("\nCreating Front side\n");
     pParser->Normalize();
     pParser->Sort();
     if ( pParser->m_bCreateFront ) {
-      pParser->GenerateGCode(pParser->m_sFileName + "_f.ngc");
+      pParser->GenerateGCode(pParser->m_sExportPrefix + pParser->m_sFileName + "_f.ngc");
     }
     if ( pParser->m_bCreateBack ) {
+      printf("\nCreating Back side\n");
       pParser->Invert();
       pParser->Normalize();
       pParser->Sort();
-      pParser->GenerateGCode(pParser->m_sFileName + "_b.ngc");
+      pParser->GenerateGCode(pParser->m_sExportPrefix + pParser->m_sFileName + "_b.ngc");
     }
+    printf("\n");
     return 0;
 }

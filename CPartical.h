@@ -35,7 +35,12 @@ class CPartical {
     std::vector<CPartical*> m_Childs;
 
     CElement*   m_pElement;
-    static uint32_t ms_ulNoOfObjects;
+    static uint64_t ms_ulNoOfObjects;
+
+    static void show_progress();
+    static void reset_progress();
+    static uint64_t ms_ulProgressMax;
+    static uint64_t ms_ulProgress;
 };
 
 #endif  // CPARTICAL_H_

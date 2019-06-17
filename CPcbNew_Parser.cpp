@@ -30,7 +30,8 @@ CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
 : m_sFileName("")
 , m_pRootPartical(nullptr)
 , m_bCreateFront(true)
-, m_bCreateBack(true) {
+, m_bCreateBack(true)
+, m_sExportPrefix("") {
 
   try {
     TCLAP::CmdLine cmd("Command description message", ' ', "0.9");
@@ -45,10 +46,15 @@ CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
     TCLAP::ValueArg<double> zprocess("p", "z_process", "z-Process position to use for processing x/y-moves (cutting depth)", false, CElement::ms_dZProcess, "double");
     cmd.add(zprocess);
 
-    TCLAP::ValueArg<uint8_t> ncycles("c", "cycles", "cutting cycles", false, CPcbNew_Parser::ms_nCutCycles, "uint8");
+    TCLAP::ValueArg<int> ncycles("c", "cycles", "cutting cycles", false, CPcbNew_Parser::ms_nCutCycles, "int");
     cmd.add(ncycles);
 
-    TCLAP::MultiArg<string> layers("l", "layer", "Layer to include in gcode", false, "");
+    vector<string> allowed_layers;
+    allowed_layers.push_back("Edge.Cuts");
+    allowed_layers.push_back("B.Fab");
+    allowed_layers.push_back("Dwgs.User");
+    TCLAP::ValuesConstraint<string> allowedLayers(allowed_layers);
+    TCLAP::MultiArg<string> layers("l", "layer", "Layer to parse, only Edge.Cuts is included in gcode", false, &allowedLayers);
     cmd.add(layers);
 
     vector<string> allowed_side;
@@ -76,6 +82,16 @@ CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
     TCLAP::ValueArg<int> spindlespeed("", "spindlespeed", "Spindle rotation speed [u/min]", false, ms_nSpindleSpeed, "int");
     cmd.add(spindlespeed);
 
+    vector<string> allowed_shapes;
+    allowed_shapes.push_back("line");
+    allowed_shapes.push_back("circle");
+    TCLAP::ValuesConstraint<string> allowedShapes(allowed_shapes);
+    TCLAP::MultiArg<string> shapes("", "shapes", "Shapes to include in gcode", false, &allowedShapes);
+    cmd.add(shapes);
+
+    TCLAP::ValueArg<string> prefix("", "prefix", "File name prefix to export", false, "", "string");
+    cmd.add(prefix);
+
     cmd.parse(argc, argv);
 
     m_sFileName = filename.getValue();
@@ -88,7 +104,21 @@ CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
     if ( vlayers.size() > 0 ) {
       CPcbNew_Parser::ms_Layers = vlayers;
     } else {
-      CPcbNew_Parser::ms_Layers.push_back("Edge.Cuts");
+      CPcbNew_Parser::ms_Layers = allowed_layers;
+    }
+
+    vector<string> vshapes = shapes.getValue();
+    if ( vshapes.size() == 0 ) {
+      CElementCircle::ms_bToExport = true;
+      CElementLine::ms_bToExport = true;
+    } else {
+      for ( unsigned int j=0; j < vshapes.size(); j++ ) {
+        string sshape = vshapes[j];
+        if ( sshape == "circle" )
+          CElementCircle::ms_bToExport = true;
+        else if ( sshape == "line" )
+          CElementLine::ms_bToExport = true;
+      }
     }
 
     string sSide = side.getValue();
@@ -102,6 +132,10 @@ CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
     CElement::ms_nFeedRatePlunge = plungefeedrate.getValue();
     CElement::ms_nFeedRateProcess = processfeedrate.getValue();
     ms_nSpindleSpeed = spindlespeed.getValue();
+
+    m_sExportPrefix = prefix.getValue();
+
+    CPcbNew_Parser::ms_nCutCycles = ncycles.getValue();
 
   } catch (TCLAP::ArgException &e) {
     // catch any exceptions
@@ -133,6 +167,26 @@ CPcbNew_Parser::~CPcbNew_Parser() {
 #define _sFILE_   "############################# FILE #############################\n"
 #define _sPART_   "########################### PARTICALS ##########################\n"
 #define _sELEM_   "########################### ELEMENTS ###########################\n"
+
+#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+#define PBWIDTH 60
+
+void printProgress(uint64_t n, uint64_t k) {
+  double progress = static_cast<float>(n) / static_cast<float>(k);
+
+  int barWidth = 70;
+  std::cout << "[";
+  int npos = barWidth * progress;
+  for (int i = 0; i < barWidth; ++i) {
+    if (i < npos)
+      std::cout << "=";
+    else if (i == npos)
+      std::cout << ">";
+    else
+      std::cout << " ";
+  }
+  std::cout << "] " << int(progress * 100.0) << "%  (" << n << " of " << k << ") \r";
+  std::cout.flush();}
 
 bool CPcbNew_Parser::Parse() {
     string sFileName = m_sFileName;
@@ -168,7 +222,6 @@ bool CPcbNew_Parser::Parse() {
             if ( !m_pRootPartical )
                 m_pRootPartical = p;
             pCurrent = p;
-            if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf(".");
             std::this_thread::sleep_for(std::chrono::microseconds(1));
         } else if (c == ')') {
             //! leave partialcal
@@ -183,17 +236,21 @@ bool CPcbNew_Parser::Parse() {
             if ( pCurrent && pCurrent->m_Childs.size() == 0 )
                 pCurrent->m_sName += c;
         }
+        printProgress(pos+1, content.length());
     }
+    printf("\n");
 
     if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf(" done \n\n");
 
-    printf("Found %d kicad elements\n", CPartical::ms_ulNoOfObjects);
+    printf("Found %lu kicad elements\n", CPartical::ms_ulNoOfObjects);
 
+    CPartical::reset_progress();
     if ( CPcbNew_Parser::ms_nVerbose > 1 ) printf("%s", _sPART_);
     if ( m_pRootPartical ) {
         m_pRootPartical->evaluate();
         if ( CPcbNew_Parser::ms_nVerbose > 1 ) m_pRootPartical->print(0);
     }
+    printf("\n");
     if ( CPcbNew_Parser::ms_nVerbose > 1 ) printf("%s\n\n", _sPART_);
 
     if ( m_Elements.size() == 0 ) {
@@ -220,17 +277,23 @@ bool CPcbNew_Parser::Normalize() {
     CPoint max;
     (*m_Elements.begin())->GetEndPoint(&min);
     (*m_Elements.begin())->GetEndPoint(&max);
+    int n = 0;
     for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
         CElement* pElement = *it;
         pElement->minmax(&min, &max);
+        printProgress(++n, m_Elements.size());
     }
+    printf("\n");
 
     min.normalize(m_Offset);
-    if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf("\nBefore: Min: %s, Max:%s\n", min.print().c_str(), max.print().c_str());
+    n = 0;
+    if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf("Before: Min: %s, Max:%s\n", min.print().c_str(), max.print().c_str());
     for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
         CElement* pElement = *it;
         pElement->normalize(min);
+        printProgress(++n, m_Elements.size());
     }
+    printf("\n");
 
     if ( CPcbNew_Parser::ms_nVerbose > 1 ) {
       printf("%s", _sELEM_);
@@ -272,7 +335,9 @@ bool CPcbNew_Parser::Sort() {
         _out.push_back(pFirst);
         // printf("%s\n", pFirst->print().c_str());
         // printf("Waypoint at at %s\n", _current.print().c_str());
+        printProgress(_out.size(), m_Elements.size());
     }
+    printf("\n");
     // printf("Ending at %s\n", _current.print().c_str());
     m_Elements = _out;
 
@@ -290,14 +355,17 @@ bool CPcbNew_Parser::Sort() {
 
 bool CPcbNew_Parser::Invert() {
   printf("Invert elements\n");
+  int n = 0;
   for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
       CElement* pElement = *it;
       pElement->invert(m_Max, CElement::x);
+      printProgress(++n, m_Elements.size());
   }
+  printf("\n");
   return true;
 }
 bool CPcbNew_Parser::GenerateGCode(std::string sFileName) {
-    printf("Generate %s\n", sFileName.c_str());
+    printf("Generate %s - %u cycles\n", sFileName.c_str(), CPcbNew_Parser::ms_nCutCycles);
     string sGCode;
 
     int nSpindle = 1000;
@@ -318,14 +386,26 @@ bool CPcbNew_Parser::GenerateGCode(std::string sFileName) {
     sGCode += "M3\t; start spindle\n";
     sGCode += "G04 P3.0\t; wait for 3.0 seconds\n";
 
-    for ( uint8_t n=1; n <= CPcbNew_Parser::ms_nCutCycles+1; n++ )  {
-      printf("Cycle %u\n", n);
+    for ( uint8_t n=0; n < CPcbNew_Parser::ms_nCutCycles; n++ )  {
+
+      if ( CPcbNew_Parser::ms_nCutCycles > 1 ) {
+        printf("Cycle %u\n", n+1);
+        sGCode += "(Block-name: Cycle " + std::to_string(n+1) + ")\n";
+        sGCode += "(Block-expand: 0)\n";
+        sGCode += "(Block-enable: 1)\n";
+        sGCode += ";\n";
+      }
+
       CPoint  _current;
-      CElement::ms_dZProcess_n = -1.0 * fabs(CElement::ms_dZProcess * n);
+      CElement::ms_dZProcess_n = -1.0 * fabs(CElement::ms_dZProcess * (n+1));
+      int k = 0;
       for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
           CElement* pElement = *it;
-          sGCode += pElement->GetGCode(&_current);
+          if ( pElement->m_bToExport )
+            sGCode += pElement->GetGCode(&_current);
+          printProgress(++k, m_Elements.size());
       }
+      printf("\n");
     }
 
     sGCode += "(Block-name: End)\n";
@@ -343,6 +423,8 @@ bool CPcbNew_Parser::GenerateGCode(std::string sFileName) {
     std::ofstream out(sFileName);
     out << sGCode;
     out.close();
+
+    printf("\n");
 
     return true;
 }

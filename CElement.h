@@ -11,10 +11,11 @@ class CPartical;
 class CElement {
  public:
     enum _E_InvMode { x, y };
-    explicit CElement(string sName)
+    CElement(string sName, bool bToExport)
         : m_sName(sName)
         , m_nId(++ms_nId)
-        , m_sLayer("") {
+        , m_sLayer("")
+        , m_bToExport(bToExport) {
     }
     virtual ~CElement() {
     }
@@ -45,12 +46,13 @@ class CElement {
     static int    ms_nFeedRatePlunge;
 
     string m_sLayer;
+    bool m_bToExport;
 };
 
 class CElementCircle : public CElement {
  public:
     CElementCircle(string sName, CPartical* pPartial)
-        : CElement(sName) {
+        : CElement(sName, CElementCircle::ms_bToExport) {
         evaluate(pPartial);
     }
     std::string print() const override;
@@ -62,11 +64,12 @@ class CElementCircle : public CElement {
     void normalize(const CPoint& start) override;
     void invert(const CPoint& inv, _E_InvMode eIM) override;
     CPoint  m_Center;
+    static bool ms_bToExport;
 };
 class CElementLine : public CElement {
  public:
     CElementLine(string sName, CPartical* pPartial)
-        : CElement(sName) {
+        : CElement(sName, CElementLine::ms_bToExport) {
         evaluate(pPartial);
     }
     std::string print() const override;
@@ -80,6 +83,7 @@ class CElementLine : public CElement {
 
     CPoint  m_Start;
     CPoint  m_End;
+    static bool ms_bToExport;
 };
 
 #endif  //  CELEMENT_H_

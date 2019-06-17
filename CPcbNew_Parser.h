@@ -38,6 +38,7 @@ class CPcbNew_Parser {
     static uint8_t ms_nCutCycles;
     bool m_bCreateFront;
     bool m_bCreateBack;
+    string m_sExportPrefix;
 };
 
 #endif  // CPCBNEW_PARSER_H_
