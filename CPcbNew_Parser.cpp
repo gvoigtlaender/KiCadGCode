@@ -171,8 +171,13 @@ CPcbNew_Parser::~CPcbNew_Parser() {
 #define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
 #define PBWIDTH 60
 
-void printProgress(uint64_t n, uint64_t k) {
+int nLast = -1;
+void printProgress(uint64_t n, uint64_t k, std::string sLog) {
   double progress = static_cast<float>(n) / static_cast<float>(k);
+  int nCurrent = static_cast<int>(progress * 100.0);
+  if ( (nLast == nCurrent) && (n != k) )
+    return;
+  nLast = progress;
 
   int barWidth = 70;
   std::cout << "[";
@@ -185,8 +190,41 @@ void printProgress(uint64_t n, uint64_t k) {
     else
       std::cout << " ";
   }
-  std::cout << "] " << int(progress * 100.0) << "%  (" << n << " of " << k << ") \r";
-  std::cout.flush();}
+  // std::cout << "] " << int(progress * 100.0) << "%  (" << sLog << ": " << n << " of " << k << ") \r";
+  std::cout << "] " << nCurrent << "%  (" << n << " of " << k << ") \r";
+  std::cout.flush();
+}
+void printProgress(uint64_t n, uint64_t k) {
+  printProgress(n, k, "");
+}
+
+bool EntryToMask(const std::string& sName) {
+
+  string sMaskedNames[] = {
+    "general",
+    "page",
+    "layers",
+    "setup",
+    "net",
+    "net_class",
+    "module",
+    "segment",
+    "via",
+    "gr_text",
+    "gr_poly",
+    "zone",
+    "tstamp",
+  };
+
+  for (const string &text : sMaskedNames) {
+    if ( sName.find(text) == 0 ) {
+      // printf("%s masked by %s\n", sName.c_str(), sMaskedNames[n].c_str());
+      return true;
+    }
+  }
+
+  return false;
+}
 
 bool CPcbNew_Parser::Parse() {
     string sFileName = m_sFileName;
@@ -202,7 +240,13 @@ bool CPcbNew_Parser::Parse() {
 
     std::stringstream strStream;
     strStream << inFile.rdbuf();  // read the file
+    inFile.close();
+
     std::string content = strStream.str();  // str holds the content of the file
+    strStream.clear();
+
+    content.erase(std::remove(content.begin(), content.end(), '\n'), content.end());
+    content.erase(std::remove(content.begin(), content.end(), '\a'), content.end());
 
     if ( CPcbNew_Parser::ms_nVerbose > 1 ) {
       printf("%s", _sFILE_);
@@ -213,27 +257,50 @@ bool CPcbNew_Parser::Parse() {
     CPartical* pCurrent = nullptr;
 
     if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf("evaluating kicad elements .");
-
+    uint nSkippedEntry = 0;
     for ( uint64_t pos = 0; pos < content.length(); pos++ ) {
         char c = content[pos];
         //! enter partical
         if (c == '(') {
-            CPartical* p = new CPartical(pCurrent);
-            if ( !m_pRootPartical )
-                m_pRootPartical = p;
-            pCurrent = p;
-            std::this_thread::sleep_for(std::chrono::microseconds(1));
+            if ( pCurrent && EntryToMask(pCurrent->m_sName) ) {
+              // printf("Skip sub entries for name %s\n", pCurrent->m_sName.c_str() );
+              pCurrent->m_bToSkip = true;
+              nSkippedEntry++;
+            } else if ( pCurrent ) {
+              // printf("Allow sub entries for name %s\n", pCurrent->m_sName.c_str() );
+            }
+            if ( nSkippedEntry == 0 ) {
+              CPartical* p = new CPartical(pCurrent, false);
+              if ( !m_pRootPartical )
+                  m_pRootPartical = p;
+              pCurrent = p;
+              // std::this_thread::sleep_for(std::chrono::microseconds(1));
+            }
         } else if (c == ')') {
             //! leave partialcal
-            if ( pCurrent )
-                pCurrent = pCurrent->m_pParent;
-            if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf(".");
-            std::this_thread::sleep_for(std::chrono::microseconds(1));
+            if ( pCurrent ) {
+              if ( nSkippedEntry == 0 ) {
+                CPartical* pParent = pCurrent->m_pParent;
+                if ( EntryToMask(pCurrent->m_sName) )
+                  pCurrent->m_bToSkip = true;
+                if ( pCurrent->m_bToSkip ) {
+                  // printf("delete skipped entry %s\n", pCurrent->m_sName.c_str());
+                  pParent->m_Childs.pop_back();
+                  delete pCurrent;
+                }
+                pCurrent = pParent;
+              } else {
+
+              }
+            }
+            if ( nSkippedEntry > 0 )
+              nSkippedEntry--;
+            std::this_thread::sleep_for(std::chrono::nanoseconds(1));
         } else if ( c == '\n' ) {
         } else if ( c == '\r' ) {
         } else if ( c == '\t' ) {
         } else {
-            if ( pCurrent && pCurrent->m_Childs.size() == 0 )
+            if ( nSkippedEntry == 0 && pCurrent && pCurrent->m_Childs.size() == 0 )
                 pCurrent->m_sName += c;
         }
         printProgress(pos+1, content.length());

@@ -9,10 +9,12 @@ class CElement;
 
 class CPartical {
  public:
-    explicit CPartical(CPartical* pParent)
+    CPartical(CPartical* pParent, bool bToSkip)
     : m_pParent(pParent)
     , m_sName("")
-    , m_pElement(nullptr) {
+    , m_pElement(nullptr)
+    , m_ulId(CPartical::ms_ulNoOfObjects)
+    , m_bToSkip(bToSkip) {
         if ( pParent )
             pParent->m_Childs.push_back(this);
         CPartical::ms_ulNoOfObjects++;
@@ -35,9 +37,11 @@ class CPartical {
     std::vector<CPartical*> m_Childs;
 
     CElement*   m_pElement;
+    uint64_t  m_ulId;
+    bool      m_bToSkip;
     static uint64_t ms_ulNoOfObjects;
 
-    static void show_progress();
+    void show_progress();
     static void reset_progress();
     static uint64_t ms_ulProgressMax;
     static uint64_t ms_ulProgress;

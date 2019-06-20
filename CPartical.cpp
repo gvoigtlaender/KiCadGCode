@@ -16,9 +16,10 @@ using std::string;
 
 /*static*/ uint64_t CPartical::ms_ulNoOfObjects = 0;
 
-void printProgress(uint64_t n, uint64_t k);
+void printProgress(uint64_t n, uint64_t k, std::string sLog);
 /*static*/ void CPartical::show_progress() {
-  printProgress(++CPartical::ms_ulProgress, CPartical::ms_ulProgressMax);
+  printProgress(++CPartical::ms_ulProgress, CPartical::ms_ulProgressMax, std::to_string(m_ulId));
+  for (uint16_t a=0; a < 10000; a++ ) { }
 }
 /*static*/ void CPartical::reset_progress() {
   CPartical::ms_ulProgress = 0;
@@ -55,6 +56,8 @@ bool LayerContains(const string& sLayer) {
 
 void CPartical::evaluate() {
     m_sName = trim(m_sName);
+    // if ( CPcbNew_Parser::ms_nVerbose >= 1 )
+    //   printf("CPartical::evaluate(%s)\n", m_sName.c_str());
     if ( m_sName == "gr_line" )
         m_pElement = new CElementLine("line", this);
     else if ( m_sName == "gr_circle" )
