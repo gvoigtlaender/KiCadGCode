@@ -25,6 +25,9 @@ using std::vector;
 /*static*/ std::vector<string> CPcbNew_Parser::ms_Layers;
 /*static*/ int CPcbNew_Parser::ms_nSpindleSpeed = 1000;
 /*static*/ uint8_t CPcbNew_Parser::ms_nCutCycles = 1;
+/*static*/ uint8_t CPcbNew_Parser::ms_nMatrixX = 1;
+/*static*/ uint8_t CPcbNew_Parser::ms_nMatrixY = 1;
+/*static*/ double CPcbNew_Parser::ms_dMatrixOffset = 5.0;
 
 CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
 : m_sFileName("")
@@ -48,6 +51,13 @@ CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
 
     TCLAP::ValueArg<int> ncycles("c", "cycles", "cutting cycles", false, CPcbNew_Parser::ms_nCutCycles, "int");
     cmd.add(ncycles);
+
+    TCLAP::ValueArg<int> matrixX("", "matrixX", "Number of Matrix cuts X", false, CPcbNew_Parser::ms_nMatrixX, "int");
+    cmd.add(matrixX);
+    TCLAP::ValueArg<int> matrixY("", "matrixY", "Number of Matrix cuts Y", false, CPcbNew_Parser::ms_nMatrixY, "int");
+    cmd.add(matrixY);
+    TCLAP::ValueArg<double> matrixOffset("", "matrixOffset", "Offset between Matrix cuts [mm]", false, CPcbNew_Parser::ms_dMatrixOffset, "double");
+    cmd.add(matrixOffset);
 
     vector<string> allowed_layers;
     allowed_layers.push_back("Edge.Cuts");
@@ -136,6 +146,10 @@ CPcbNew_Parser::CPcbNew_Parser(int argc, char** argv)
     m_sExportPrefix = prefix.getValue();
 
     CPcbNew_Parser::ms_nCutCycles = ncycles.getValue();
+
+    CPcbNew_Parser::ms_nMatrixX = matrixX.getValue();
+    CPcbNew_Parser::ms_nMatrixY = matrixY.getValue();
+    CPcbNew_Parser::ms_dMatrixOffset = matrixOffset.getValue();
 
   } catch (TCLAP::ArgException &e) {
     // catch any exceptions
@@ -463,15 +477,23 @@ bool CPcbNew_Parser::GenerateGCode(std::string sFileName) {
         sGCode += ";\n";
       }
 
-      CPoint  _current;
       CElement::ms_dZProcess_n = -1.0 * fabs(CElement::ms_dZProcess * (n+1));
       int k = 0;
-      for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
-          CElement* pElement = *it;
-          if ( pElement->m_bToExport )
-            sGCode += pElement->GetGCode(&_current);
-          printProgress(++k, m_Elements.size());
+      for ( uint8_t x=0; x<CPcbNew_Parser::ms_nMatrixX; x++ ) {
+        for ( uint8_t y=0; y<CPcbNew_Parser::ms_nMatrixY; y++ ) {
+          CPoint  _current;
+          CPoint _offset(x*(CPcbNew_Parser::ms_dMatrixOffset+m_Max.m_dX), y*(CPcbNew_Parser::ms_dMatrixOffset+m_Max.m_dY));
+          printf("x=%d, y=%d, dx=%.1f, dy=%.1f", x, y, _offset.m_dX, _offset.m_dY);
+          for ( list<CElement*>::iterator it = m_Elements.begin(); it != m_Elements.end(); it++ ) {
+            CElement* pElement = *it;
+            if ( pElement->m_bToExport )
+            sGCode += pElement->GetGCode(&_current, &_offset);
+            printProgress(++k, m_Elements.size()*CPcbNew_Parser::ms_nMatrixX*CPcbNew_Parser::ms_nMatrixY);
+          }
+        }
+
       }
+
       printf("\n");
     }
 

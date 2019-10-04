@@ -28,7 +28,7 @@ class CElement {
         return this->GetDistance(current, &tmp);
     }
     virtual void GetEndPoint(CPoint* start) const = 0;
-    virtual std::string GetGCode(CPoint* /*start*/) const;
+    virtual std::string GetGCode(CPoint* start, CPoint* offset) const;
     static std::string GetGCodeFeedratePlunge();
     static std::string GetGCodeFeedrateProcess();
     static std::string GetGCodeFeedrate();
@@ -59,7 +59,7 @@ class CElementCircle : public CElement {
     void evaluate(CPartical* pPartial) override;
     double GetDistance(const CPoint& current, CPoint* start) const override;
     void GetEndPoint(CPoint* start) const override;
-    std::string GetGCode(CPoint* start) const override;
+    std::string GetGCode(CPoint* start, CPoint* offset) const override;
     void  minmax(CPoint* min, CPoint* max) const override;
     void normalize(const CPoint& start) override;
     void invert(const CPoint& inv, _E_InvMode eIM) override;
@@ -76,7 +76,7 @@ class CElementLine : public CElement {
     void evaluate(CPartical* pPartial) override;
     double GetDistance(const CPoint& current, CPoint* start) const override;
     void GetEndPoint(CPoint* start) const override;
-    std::string GetGCode(CPoint* start) const override;
+    std::string GetGCode(CPoint* start, CPoint* offset) const override;
     void  minmax(CPoint* min, CPoint* max) const override;
     void normalize(const CPoint& start) override;
     void invert(const CPoint& inv, _E_InvMode eIM) override;

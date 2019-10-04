@@ -35,6 +35,9 @@ class CPcbNew_Parser {
     static vector<string> ms_Layers;
     static int ms_nSpindleSpeed;
     static uint8_t ms_nCutCycles;
+    static uint8_t ms_nMatrixX;
+    static uint8_t ms_nMatrixY;
+    static double ms_dMatrixOffset;
     bool m_bCreateFront;
     bool m_bCreateBack;
     string m_sExportPrefix;

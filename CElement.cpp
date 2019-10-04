@@ -15,7 +15,7 @@ std::string CElement::print() const {
     return "[Element: " + m_sName + "]";
 }
 
-std::string CElement::GetGCode(CPoint* /*start*/) const {
+std::string CElement::GetGCode(CPoint* start, CPoint* offset) const {
     string s;
     s += "(Block-name: "+ this->m_sName + "_ID_" + std::to_string(m_nId) + ")\n";
     s += "(Block-expand: 0)\n";
@@ -71,14 +71,14 @@ void CElementCircle::GetEndPoint(CPoint* start) const {
     *start = m_Center;
 }
 
-std::string CElementCircle::GetGCode(CPoint* start) const {
+std::string CElementCircle::GetGCode(CPoint* start, CPoint* offset) const {
     string s;
-    s += CElement::GetGCode(start);
+    s += CElement::GetGCode(start, offset);
 
     s += GetGCodeFeedrate();
     s += " G0";
-    s += " X" + std::to_string(m_Center.m_dX);
-    s += " Y" + std::to_string(m_Center.m_dY);
+    s += " X" + std::to_string(m_Center.m_dX + offset->m_dX);
+    s += " Y" + std::to_string(m_Center.m_dY + offset->m_dY);
     s += " Z" + std::to_string(CElement::ms_dZSafe);
     s += "\t; move to start pos\n";
 
@@ -159,9 +159,9 @@ void CElementLine::GetEndPoint(CPoint* start) const {
       *start = p2;
 }
 
-std::string CElementLine::GetGCode(CPoint* start) const {
+std::string CElementLine::GetGCode(CPoint* start, CPoint* offset) const {
     string s;
-    s += CElement::GetGCode(start);
+    s += CElement::GetGCode(start, offset);
 
     CPoint  p1, p2;
 
@@ -175,8 +175,8 @@ std::string CElementLine::GetGCode(CPoint* start) const {
 
     s += GetGCodeFeedrate();
     s += " G0";
-    s += " X" + std::to_string(p1.m_dX);
-    s += " Y" + std::to_string(p1.m_dY);
+    s += " X" + std::to_string(p1.m_dX + offset->m_dX);
+    s += " Y" + std::to_string(p1.m_dY + offset->m_dY);
     s += " Z" + std::to_string(CElement::ms_dZSafe);
     s += "\t; move to start pos\n";
 
@@ -184,8 +184,8 @@ std::string CElementLine::GetGCode(CPoint* start) const {
     s += " G1 Z" + std::to_string(CElement::ms_dZProcess_n) + "\n";
     s += GetGCodeFeedrateProcess();
     s += " G1";
-    s += " X" + std::to_string(p2.m_dX);
-    s += " Y" + std::to_string(p2.m_dY);
+    s += " X" + std::to_string(p2.m_dX + offset->m_dX);
+    s += " Y" + std::to_string(p2.m_dY + offset->m_dY);
     s += "\n";
 
     s += GetGCodeFeedrate();
