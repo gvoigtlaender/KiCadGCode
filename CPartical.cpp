@@ -1,7 +1,7 @@
 /* Copyright 2019 Georg Voigtlaender gvoigtlaender@googlemail.com */
 #include <CPartical.h>
 #include <CElement.h>
-#include <CPcbNew_Parser.h>
+#include <CParser.h>
 
 #include <fstream>
 #include <iostream>
@@ -51,28 +51,38 @@ void CPartical::print(uint8_t nIdx /* =  0 */) {
 }
 
 bool LayerContains(const string& sLayer) {
-  return (std::find(CPcbNew_Parser::ms_Layers.begin(), CPcbNew_Parser::ms_Layers.end(), sLayer) != CPcbNew_Parser::ms_Layers.end());
+  return (std::find(CParser::ms_Layers.begin(), CParser::ms_Layers.end(), sLayer) != CParser::ms_Layers.end());
 }
 
 void CPartical::evaluate() {
     m_sName = trim(m_sName);
-    // if ( CPcbNew_Parser::ms_nVerbose >= 1 )
-    //   printf("CPartical::evaluate(%s)\n", m_sName.c_str());
+    if ( CParser::ms_nVerbose >= 1 )
+       printf("CPartical::evaluate(%s)\n", m_sName.c_str());
     if ( m_sName == "gr_line" )
         m_pElement = new CElementLine("line", this);
     else if ( m_sName == "gr_circle" )
         m_pElement = new CElementCircle("circle", this);
+    else if ( m_sName == "gr_arc" )
+        m_pElement = new CElementArc("arc", this);
+    else if ( m_sName == "gr_text StartHere" )
+    {
+      CElementText* pText = new CElementText("text", this);
+          m_pElement = pText;
+          if ( m_pElement->m_sLayer == "Cmts.User" )
+            m_pElement->m_sLayer = "Edge.Cuts";
+          pText->m_sText = m_sName.substr(8);
+    }
 
     // if ( m_pElement != nullptr && m_pElement->m_sLayer != "Edge.Cuts" ) {
     if ( m_pElement != nullptr && !LayerContains(m_pElement->m_sLayer) ) {
-      if ( CPcbNew_Parser::ms_nVerbose > 0 ) printf("delete %s -> layer %s\n", m_pElement->m_sName.c_str(), m_pElement->m_sLayer.c_str());
+      if ( CParser::ms_nVerbose > 0 ) printf("delete %s -> layer %s\n", m_pElement->m_sName.c_str(), m_pElement->m_sLayer.c_str());
       delete m_pElement;
       m_pElement = nullptr;
     }
     if ( m_pElement ) {
       if ( m_pElement->m_sLayer != "Edge.Cuts" )
       m_pElement->m_bToExport = false;
-      CPcbNew_Parser::m_Elements.push_back(m_pElement);
+      CParser::m_Elements.push_back(m_pElement);
     }
     show_progress();
     for ( uint8_t n=0; n < m_Childs.size(); n++ )

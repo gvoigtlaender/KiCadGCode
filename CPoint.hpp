@@ -29,6 +29,17 @@ class CPoint {
         return  true;
     }
 
+    const CPoint operator + (CPoint &obj) const {
+      CPoint res;
+      res.m_dX = m_dX + obj.m_dX;
+      res.m_dY = m_dY + obj.m_dY;
+      return res;
+    }
+    /*
+    friend CPoint operator + (CPoint const &, CPoint const &);
+    */
+
+
     std::string print() const {
         return std::to_string(m_dX) + ":" + std::to_string(m_dY);
     }
@@ -48,8 +59,20 @@ class CPoint {
     static double GetDistance(const CPoint& P1, const CPoint& P2) {
         return std::sqrt(std::pow(P1.m_dX - P2.m_dX, 2) + std::pow(P1.m_dY - P2.m_dY, 2));
     }
+
+    double GetDistance(const CPoint& P1)
+    {
+      return CPoint::GetDistance(*this, P1);
+    }
     double m_dX;
     double m_dY;
 };
+
+/*
+CPoint operator + (CPoint const &c1, CPoint const &c2)
+{
+     return CPoint(c1.m_dX + c2.m_dX, c1.m_dY + c2.m_dY);
+}
+*/
 
 #endif  // CPOINT_HPP_
